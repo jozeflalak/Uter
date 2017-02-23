@@ -378,9 +378,17 @@ void CovDock::slotUpdatePressed()
 		return;
 	}
 
-	/* Coverage breakpoint on the end of token, no any coverage count before breakpoint trigger.
-	 * so get current instruction address in token of all threads, to adjust coverage for clean token*/
-	QMap<CovToken*, unsigned long long> digintoken;
+	/* Adjust for half coverage token:
+	 * Coverage breakpoint on the end of token, no any coverage count before breakpoint trigger.
+	 * so get current instruction address in token of all threads, to adjust coverage for clean token
+	 * xxxx <- start of token
+	 * xxxx <- coveraged by adjust
+	 * xxxx <- coveraged by adjust
+	 * xxxx <- current instruction at here
+	 * xxxx
+	 * xxxx <- end of token, coverage breakpoint at here
+	 * */
+	QMap<CovToken*, unsigned long long> digintoken;		//Adjust information, <token, current instruction at>
 	QMap<unsigned int, TargetThread*>::iterator thrd_iter;
 	for (thrd_iter = g_target->m_thread_set.begin(); thrd_iter != g_target->m_thread_set.end(); thrd_iter++) {
 		TargetThread *thrd = thrd_iter.value();
@@ -394,6 +402,8 @@ void CovDock::slotUpdatePressed()
 			continue;
 		}
 		unsigned long long offset_addr = inst_at - mod->m_add_mkup;
+
+		//Locate token at
 		DwfCu *cu = mod->dwarfGetCuByAddrIn(offset_addr);
 		if (cu == NULL) {
 			continue;
@@ -953,10 +963,12 @@ void CovDock::flushEditor(UEditor *edit)
 	for (iter = m_files.begin(); iter != m_files.end(); iter++) {
 		TextCovFile *covfile = iter.value();
 
+		UEditor *current_edit = NULL;
+
 		if (edit == NULL) {
 			/*Flush any opening coverage file*/
-			edit = g_mainwin->editGetByPath(covfile->m_name);
-			if (edit == NULL) {
+			current_edit = g_mainwin->editGetByPath(covfile->m_name);
+			if (current_edit == NULL) {
 				continue;
 			}
 		} else {
@@ -964,35 +976,36 @@ void CovDock::flushEditor(UEditor *edit)
 			if (covfile->m_name != edit->m_file_path) {
 				continue;
 			}
+			current_edit = edit;
 		}
 
 		/*Clear old*/
-		edit->fileCovClear();
+		current_edit->fileCovClear();
 		/*Set new, flush every line*/
-		int linecount = edit->lines();
+		int linecount = current_edit->lines();
 		int iloop;
 		for (iloop = 0; iloop < linecount; iloop++) {
 			if (covfile->m_root_covinfo == NULL) {
-				edit->fileCovSet(iloop, EditorCpp::FILECOV_IGNORE);
+				current_edit->fileCovSet(iloop, EditorCpp::FILECOV_IGNORE);
 				continue;
 			}
 			/*Get line coverage*/
 			QMap<unsigned int, CovLine*>::iterator iter;
 			iter = covfile->m_root_covinfo->m_linemap.find(iloop + 1);
 			if (iter == covfile->m_root_covinfo->m_linemap.end()) {
-				edit->fileCovSet(iloop, EditorCpp::FILECOV_IGNORE);
+				current_edit->fileCovSet(iloop, EditorCpp::FILECOV_IGNORE);
 				continue;
 			}
 			CovLine *covline = iter.value();
 			/*Set line coverage*/
 			if (covline->m_num == 0) {
-				edit->fileCovSet(iloop, EditorCpp::FILECOV_IGNORE);
+				current_edit->fileCovSet(iloop, EditorCpp::FILECOV_IGNORE);
 			} else if (covline->m_num == covline->m_hit) {
-				edit->fileCovSet(iloop, EditorCpp::FILECOV_YES);
+				current_edit->fileCovSet(iloop, EditorCpp::FILECOV_YES);
 			} else if (covline->m_hit == 0) {
-				edit->fileCovSet(iloop, EditorCpp::FILECOV_NO);
+				current_edit->fileCovSet(iloop, EditorCpp::FILECOV_NO);
 			} else {
-				edit->fileCovSet(iloop, EditorCpp::FILECOV_PART);
+				current_edit->fileCovSet(iloop, EditorCpp::FILECOV_PART);
 			}
 		}
 	}
