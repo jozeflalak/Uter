@@ -1,0 +1,836 @@
+===========================================================================================================
+
+
+本文件中收集的都是一些技术文章，在后边可能会用到的。
+不是最终输出的一部分，因此不做具体分类。 
+
+
+===========================================================================================================
+
+{'/home/yaozhongkai/uter/examples/examples_1/test.exe': {'/home/yaozhongkai/uter/examples/examples_1/file_2.c': None, '/home/yaozhongkai/uter/examples/examples_1/main.c': None, '/home/yaozhongkai/uter/examples/examples_1/file_1.c': None}}
+[1, 2]
+
+
+ 
+=======================================================================================
+20150513
+
+m_stop_by_pid
+m_stop_all_now
+
+1，执行暂停时，如果m_stop_all_now被设置，那么就会拒绝暂停请求，当然这只是拒绝的其中一个原因
+2，执行暂停时，设置m_stop_all_now，然后广泛停
+3，当有事件停止时，如果m_stop_all_now没有被设置，那么将其设置，并且顺便执行广泛停。不过如果已经没有
+       线程可以被停是，就不执行广泛停了。
+4，当有一般暂停时，就不干啥，没有特殊处理
+5，当因为所有的线程停下的时候，m_stop_all_now并清除，开始进入事件上报流程。
+
+=======================================================================================
+一个问题，就是事件停止都是要上报的
+停止也是要上报的。
+
+方案1：
+每个线程上都标记上是否上报过，包括是暂停的情况
+
+1，上报的过程中，先扫描事件停止。如果有事件停止，且还没有上报，则上报，并且标记上已经上报
+2，在继续的过程中继续扫描，如果有就再上报。
+3，如果是暂停，也要上报一次暂停。
+
+这个过程和continue step有关系，所以要结合分析
+=======================================================================================
+
+关于停下：
+m_stop_all_now
+1，执行暂停时，如果m_stop_all_now被设置，那么就会拒绝暂停请求，当然这只是拒绝的其中一个原因
+2，执行暂停时，设置m_stop_all_now，然后广泛停
+3，当有事件停止时，如果m_stop_all_now没有被设置，那么将其设置，并且顺便执行广泛停。不过如果已经没有
+       线程可以被停是，就不执行广泛停了。
+4，当有一般暂停时，就不干啥，没有特殊处理
+5，当因为所有的线程停下的时候，m_stop_all_now保持值，拔掉内存断点，开始进入事件上报流程(此处的上报可能是 事件上报或者是暂停上报)。
+6，停下的过程中，如果是一般停止，则线程状态为TARGET_THREAD_PAUSE + TARGET_STOP_BY_PAUSE
+       如果是事件停止，则线程状态未TARGET_THREAD_STOPED + 各种其他停止原因
+       其中如果是信号停止的，还要记录型号值，如果是断点，要保存当前指令地址。
+
+事件上报：
+1，当上报过程中，发现有事件性停止，则上报事件，并标记事件已经上送。
+2，当上报过程中，发现全部线程都是一般性暂停，则上报暂停事件，暂时没有给一般性暂停做事件标记的需要。
+      上报暂停事件，就是只有单纯的全部都被一般性暂停以后，这一个窗口上会发生。
+
+继续执行：
+1，执行continue是面向所有线程的
+2，执行step是面向特定线程的，step也是一种continue，只是方式不同，
+       因为他还会马上发生step事件的，不过那是异步事件，这里可以先不用管。
+       另外step还隐含着，被执行的线程step，其他线程continue的意思。
+3，在continue和step的过程中，如果发现有未上报的事件性停止，则不执行继续，而是上报事件(此处的上报是事件上报)
+4，由于continue和step是可能因为事件无法执行continue和step，所以就通过状态切换的方式
+       将TARGET_THREAD_STOPED 切换为TARGET_THREAD_CONTINUE 和 TARGET_THREAD_STEP
+       而对于TARGET_THREAD_PAUSE的就还是原来的TARGET_THREAD_PAUSE
+5，当所有的事件都上报完了，那么就可以真正执行了。此时要看断点停止的导致断点地址与线程当前地址相同。
+       如果相同，则需要进行特殊处理。而且也好看向前走用的是continue还是step。
+6，接上：如果是step，则不插入断点，只对符合条件的step执行step。并且可能同时存在多个这样的step线程
+       不过这些线程都是会收回来的，收回来以后，会重新标记发生了step事件。等到全停的时候开始执行上报。
+       同时，m_stop_all_now的关系，在多个step的过程中，不会执行广泛停。同时断点们也是带状态的，
+       因为断点是拔掉的，所以不会再拔一次。执行step期间，状态切换为TARGET_THREAD_RUNNING
+       反正回来也是个step流程。
+7，接上：如果是continue，还有可能是多个，那么按照上方的step执行，执行期间状态为TARGET_THREAD_STEPCON
+       带着这个状态(也是一种运行状态)发生step停止，则将停止状态计为TARGET_THREAD_PAUSE，方便继续往下跑。
+8，如果TARGET_THREAD_STEPCON期间发生了其他异常，比如事件，那么去处理事件。
+
+=======================================================================================
+
+=======================================================================================
+
+=======================================================================================
+
+关于停下：
+m_stop_all_now
+1，执行暂停时，如果m_stop_all_now被设置，那么就会拒绝暂停请求，当然这只是拒绝的其中一个原因
+2，执行暂停时，设置m_stop_all_now，然后广泛停
+3，当有事件停止时，如果m_stop_all_now没有被设置，那么将其设置，并且顺便执行广泛停。不过如果已经没有
+       线程可以被停是，就不执行广泛停了。
+4，当有一般暂停时，就不干啥，没有特殊处理
+5，当因为所有的线程停下的时候，m_stop_all_now保持值，拔掉内存断点，开始进入事件上报流程(此处的上报可能是 事件上报或者是暂停上报)。
+6，停下的过程中，如果是一般停止，则线程状态为TARGET_THREAD_PAUSE + TARGET_STOP_BY_PAUSE
+       如果是事件停止，则线程状态为TARGET_THREAD_STOPED + 各种其他停止原因
+       其中如果是信号停止的，还要记录型号值，如果是断点，要保存当前指令地址。
+
+事件上报：
+1，当上报过程中，发现有事件性停止，则上报事件，并标记事件已经上送。
+2，当上报过程中，发现全部线程都是一般性暂停，则上报暂停事件，暂时没有给一般性暂停做事件标记的需要。
+      上报暂停事件，就是只有单纯的全部都被一般性暂停以后，这一个窗口上会发生。
+
+继续执行：
+1，执行continue是面向所有线程的
+2，执行step是面向特定线程的，step也是一种continue，只是方式不同，
+       因为他还会马上发生step事件的，不过那是异步事件，这里可以先不用管。
+       另外step还隐含着，被执行的线程step，其他线程continue的意思。
+3，在continue和step的过程中，如果发现有未上报的事件性停止，则不执行继续，而是上报事件(此处的上报是事件上报)
+4，由于continue和step是可能因为事件无法执行continue和step，所以就通过状态切换的方式
+       将TARGET_THREAD_STOPED 切换为TARGET_THREAD_CONTINUE 和 TARGET_THREAD_STEP
+       而对于TARGET_THREAD_PAUSE的就还是原来的TARGET_THREAD_PAUSE
+5，当所有的事件都上报完了，那么就可以真正执行了。此时要看断点停止的导致断点地址与线程当前地址相同。
+       如果相同，则需要进行特殊处理。而且也好看向前走用的是continue还是step。
+6，接上：如果是step，则不插入断点，只对符合条件的step执行step。并且可能同时存在多个这样的step线程
+       不过这些线程都是会收回来的，收回来以后，会重新标记发生了step事件。等到全停的时候开始执行上报。
+       同时，m_stop_all_now的关系，在多个step的过程中，不会执行广泛停。同时断点们也是带状态的，
+       因为断点是拔掉的，所以不会再拔一次。执行step期间，状态切换为TARGET_THREAD_RUNNING
+       反正回来也是个step流程。
+7，接上：如果是continue，还有可能是多个，那么按照上方的step执行，执行期间状态为TARGET_THREAD_STEPCON
+       带着这个状态(也是一种运行状态)发生step停止，则将停止状态计为TARGET_THREAD_PAUSE，方便继续往下跑。
+8，如果TARGET_THREAD_STEPCON期间发生了其他异常，比如事件，那么去处理事件。
+9，如果没有需要越过的断点，则向内存下断点，然后防范continue。
+
+
+=======================================================================================
+
+=======================================================================================
+
+=======================================================================================
+
+=======================================================================================
+
+===========================================================================================================
+编译调试版本
+
+wget http://download.savannah.gnu.org/releases/libunwind/libunwind-1.1.tar.gz
+tar -zvxf libunwind-1.1.tar.gz 
+cd libunwind-1.1/
+./configure --prefix=/home/yaozhongkai/project/libunwind/libunwind-1.1_install --enable-debug
+or
+./configure --prefix=/home/yaozhongkai/project/libunwind/libunwind-1.1_install
+make
+make install
+ls /home/yaozhongkai/project/libunwind/libunwind-1.1_install
+===========================================================================================================
+调试libunwind
+
+#include <stdio.h>
+#include <memory.h>
+#include <malloc.h>
+#include <dlfcn.h>
+#include <libunwind.h>
+
+void do_backtrace()
+{
+    unw_cursor_t    cursor;
+    unw_context_t   context;
+
+    unw_getcontext(&context);
+    unw_init_local(&cursor, &context);
+
+    do {
+        unw_word_t  offset, pc;
+        char        fname[64];
+
+        unw_get_reg(&cursor, UNW_REG_IP, &pc);
+
+        fname[0] = '\0';
+        (void) unw_get_proc_name(&cursor, fname, sizeof(fname), &offset);
+
+        printf ("==================================>%p : (%s+0x%x) [%p]\n", pc, fname, offset, pc);
+    } while(unw_step(&cursor) > 0);
+}
+
+
+int foo()
+{
+    do_backtrace();
+}
+int bar()
+{
+    foo();
+    return 0;
+}
+int boo()
+{
+    bar();
+    return 0;
+}
+int baz()
+{
+    boo();
+    return 0;
+}
+
+int main(int argc, char *argv[])
+{
+    baz();
+    return 0;
+}
+
+/*
+gcc -g test.c -I/home/yaozhongkai/project/libunwind/libunwind-1.1_install/include/ -L/home/yaozhongkai/project/libunwind/libunwind-1.1_install/lib/ -lunwind -lunwind-x86 -Wl,-rpath,/home/yaozhongkai/project/libunwind/libunwind-1.1_install/lib/ -o test.exe;./test.exe
+
+gcc test.c -I/home/yaozhongkai/project/libunwind/libunwind-1.1_install/include/ -L/home/yaozhongkai/project/libunwind/libunwind-1.1_install/lib/ -lunwind -lunwind-x86 -Wl,-rpath,/home/yaozhongkai/project/libunwind/libunwind-1.1_install/lib/ -o test.exe;./test.exe
+
+gcc test.c -I/home/yaozhongkai/project/libunwind/libunwind-1.1_install/include/ -L/home/yaozhongkai/project/libunwind/libunwind-1.1_install/lib/ -lunwind -lunwind-x86 -Wl,-rpath,/home/yaozhongkai/project/libunwind/libunwind-1.1_install/lib/ -o test.exe
+./test.exe 2>log_nog.txt
+strip test.exe
+./test.exe 2>log_strip.txt
+objdump -d test.exe >log_dump.txt
+readelf --debug-dump=frames test.exe > log_frame.txt
+readelf --debug-dump=frames-interp test.exe > log_frame-interp.txt
+*/
+
+export UNW_DEBUG_LEVEL=100
+
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/yaozhongkai/project/dwarf_build/libdwarf-code/libdwarf/
+
+gcc -g test.c -I/home/yaozhongkai/project/libunwind/libunwind-1.1_install/include/ -L/home/yaozhongkai/project/libunwind/libunwind-1.1_install/lib/ -lunwind -lunwind-x86 -Wl,-rpath,/home/yaozhongkai/project/libunwind/libunwind-1.1_install/lib/ -o test.exe;./test.exe
+objdump -d test.exe > log_dump.txt 
+/home/yaozhongkai/project/dwarf_build/libdwarf-code/dwarfdump/dwarfdump -F test.exe > log_dwarfdump.txt
+readelf --debug-dump=frames-interp test.exe > log_frame-interp.txt
+
+/home/yaozhongkai/project/dwarf_build/libdwarf-code/dwarfdump/dwarfdump -F /
+
+===========================================================================================================
+===========================================================================================================
+http://blog.csdn.net/klarclm/article/details/8507263
+===========================================================================================================
+gdb动态库延迟断点及线程/进程创建相关事件处理(
+2013-01-15 20:44 868人阅读 评论(0) 收藏 举报
+一、gdb对共享库符号的支持
+当使用gdb调试一些动态链接生成的可执行文件时，我们可能会有意或者无意的在一些不存在的函数上打断点，此时gdb并不是提示错误，而是提示是否在之后加载的动态库中添加该断点，也就是pending断点，下面是一个典型的提示：
+(gdb) b noexisting
+Function "noexisting" not defined.
+Make breakpoint pending on future shared library load? (y or [n]) 
+此时我们可以想一下，对于动态加载的共享库文件，它可能是在可执行文件中已经确定好的，例如大家通过ldd可以看到一个可执行文件静态依赖的共享库文件；还有一种是通过dlopen在代码中主动随机打开的一个so文件。（NOTE：ldd看不到动态dlopen的so）
+无论是哪种情况，有一点是相同而确定的，那就是在设置断点的时候，gdb是不知道这个符号的位置。这一点其实也不难，难点是gdb怎么知道一个so文件被加载(包括代码中通过dlopen打开的)，并且这个被加载的so文件中包含了pending的断点符号？这里有一个实实在在的限制：gdb必须第一时间知道所有so文件的加载，在该so文件中任何一个函数都没有开始执行的时候就提前打上断点，否则就可能错误唯一的一次执行机会，例如一些so文件中init节的函数。
+
+大家可以先思考一下gdb将如何实现这个功能，此时建议先理一下思路，不要还没有理解问题本身就开始继续看下面内容。
+
+二、gdb第一时间感知动态库加载方法
+1、什么样的模式和思路
+这个问题我其实是想了一下，觉得应该有比较巧妙的方法，只是我不知道。但是看了一下gdb的实现，发现此处的方法并没有巧妙之处，但是可以实实在在解决问题。这可能就是做工程和做科学的区别，很多时候，我们要让一个工程联动流畅的运行，中间可以使用协议、妥协、适配、模式等各种方法，最终把一个产品实现，这就是我们的目的。当一个产品实现之后，大家就可以在这个基础上进行优化，扩展，兼容等各种操作，这就是工程。也就是说，实现的方法可能很朴素，但是只要能很好的解决问题，它就是一个好的工程。例如，java，它效率可能没有C++高，但是它便于跨平台、C++虽然没有C那么底层、但是它可以更好的支持大规模项目协作开发，这些都是一些应用和场景决定的一些实现。
+这里说gdb对SO文件加载的第一时间感知并不是自己独立完成的，而是需要动态链接器的支持，甚至是dl库本身的支持，gdb本身可能的确没有自己完成这个功能的能力(不太确定，但是当前的Linux实现是依赖了动态链接库本身)，它需要动态库操作本身的支持。这一点对于WIndows系统同样适用，windows系统下对于调试器来说，它可以通过WaitForDebugEvent来获得被调试任务的一些事件，而动态链接库的加载就在这个通知范围内(通知类型为LOAD_DLL_DEBUG_EVENT，可参考gdb-6.0\gdb\win32-nat.c get_child_debug_event)。
+2、linux下实现
+①、动态链接库本身支持
+_dl_debug_state动态库和调试器约定好的一个接口，这个接口事实上是一个空函数，定义于glibc-2.7\elf\dl-debug.c:
+/* This function exists solely to have a breakpoint set on it by the
+   debugger.  The debugger is supposed to find this function's address by
+   examining the r_brk member of struct r_debug, but GDB 4.15 in fact looks
+   for this particular symbol name in the PT_INTERP file.  */
+void
+_dl_debug_state (void)
+{
+}
+上面的注释已经说明了这个函数的用处，可能有些同学看这个代码的时候没有在意这个空函数，更不要说注释了。它的意思就是说，这个函数单独放在这里就是为了给调试器一个下断点的机会，调试器可以在这个约定好的地方设置断点，在该函数断点命中之后，调试器可以通过搜索_r_debug符号来找到被调试任务主动反映的一些状态。大家可以在glibc中搜索一下对这个_dl_debug_state函数的调用。在调用这个函数之前，C库都会重新的给_r_debug结构赋值。例如glibc-2.7\elf\dl-load.c  _dl_map_object_from_fd
+  struct r_debug *r = _dl_debug_initialize (0, nsid);
+……
+      /* Notify the debugger we have added some objects.  We need to
+     call _dl_debug_initialize in a static program in case dynamic
+     linking has not been used before.  */
+      r->r_state = RT_ADD;
+      _dl_debug_state ();
+而函数就是通过
+struct r_debug *
+internal_function
+_dl_debug_initialize (ElfW(Addr) ldbase, Lmid_t ns)
+{
+  struct r_debug *r;
+
+  if (ns == LM_ID_BASE)
+    r = &_r_debug;也就是这个函数返回的就是这个全局的_r_debug变量。
+  else
+    r = &GL(dl_ns)[ns]._ns_debug;
+……
+  return r;
+}
+这种模式在NPTL库中也存在，该库中定义的__nptl_create_event和__nptl_death_event就是为了让调试器方便的打断点，但是当前的gdb并没有使用这个接口功能，这是后话，具体怎么实现本文最后再描述一下。
+②、gdb对该接口的使用
+gdb-6.0\gdb\solib-svr4.c
+该文件中包含了一些符号信息，其中包含了和外部符号联动的协约式接口
+static char *solib_break_names[] =
+{
+  "r_debug_state",
+  "_r_debug_state",
+  "_dl_debug_state",这个就是之前和动态库约定好的_dl_debug_state 接口，在该文件初始化的开始就会给该函数打断点。
+  "rtld_db_dlactivity",
+  "_rtld_debug_state",
+……
+  NULL
+};
+在gdb-6.0\gdb\solib-legacy.c  legacy_svr4_fetch_link_map_offsets函数中，其中设置了r_debug、link_map结构之间的一些相对关系及结构信息(实不相瞒，这些结构具体细节有待详细分析，我也没有完全分析完整，只是看个大概)。
+然后在文件初始化函数中会调用gdb-6.0\gdb\solib-svr4.c:enable_break (void)
+      /* Now try to set a breakpoint in the dynamic linker.  */
+      for (bkpt_namep = solib_break_names; *bkpt_namep != NULL; bkpt_namep++) 这个数组中就包含了我们之前说的那个_r_debug_state函数，
+    {
+      sym_addr = bfd_lookup_symbol (tmp_bfd, *bkpt_namep);
+      if (sym_addr != 0)
+        break;
+    }
+      /* We're done with the temporary bfd.  */
+      bfd_close (tmp_bfd);
+
+      if (sym_addr != 0)
+    {
+      create_solib_event_breakpoint (load_addr + sym_addr);这个函数实现非常简单，只是简单转发给create_internal_breakpoint (address, bp_shlib_event)函数，注意其中的类型bp_shlib_event，后面将会用到。
+      return 1;
+    }
+③、当_r_debug_state命中时
+明显地，当使能动态so断点之后，系统并不会在加载一个文件之后就让程序停下来，虽然gdb在其中设置了断点。所以gdb要能够识别这个断点类型并自己默默的消化掉这个断点，然后读取新加载(卸载时删除)文件中的符号表，并判断pending断点是否存在其中，如果存在则使能断点。
+gdb-6.0\gdb\breakpoint.c：bpstat_what (bpstat bs)
+
+#define shl BPSTAT_WHAT_CHECK_SHLIBS 这个类型将会决定调试器对新接收事件的处理方式，这里就是BPSTAT_WHAT_CHECK_SHLIBS
+
+ static const enum bpstat_what_main_action
+    table[(int) class_last][(int) BPSTAT_WHAT_LAST] =
+  {
+/*shlib */
+    {shl, shl, shl, shl, shl, shl, shl, shl, ts, shl, shlr},
+
+    case bp_shlib_event:
+      bs_class = shlib_event;
+……
+      current_action = table[(int) bs_class][(int) current_action];
+
+调试器对之上类型判断的调用位置
+gdb-6.0\gdb\infrun.c：handle_inferior_event (struct execution_control_state *ecs)
+    what = bpstat_what (stop_bpstat);
+    switch (what.main_action)
+      {
+      case BPSTAT_WHAT_CHECK_SHLIBS:
+      case BPSTAT_WHAT_CHECK_SHLIBS_RESUME_FROM_HOOK:
+#ifdef SOLIB_ADD
+    {
+……
+      SOLIB_ADD (NULL, 0, NULL, auto_solib_add);
+……
+}  }
+其中的SOLIB_ADD--->>>solib_add--->>>update_solib_list--->>>TARGET_SO_CURRENT_SOS--->>>svr4_current_sos
+其中的svr4_current_sos函数将会遍历被调试任务中所有的so文件链表，对于被调试任务来说，它的所有so文件通过link_map的指针域连接在一起，下面是glibc中结构glibc-2.7\include\link.h
+struct link_map
+  {
+    /* These first few members are part of the protocol with the debugger.
+       This is the same format used in SVR4.  */
+
+    ElfW(Addr) l_addr;        /* Base address shared object is loaded at.  */
+    char *l_name;        /* Absolute file name object was found in.  */
+    ElfW(Dyn) *l_ld;        /* Dynamic section of the shared object.  */
+    struct link_map *l_next, *l_prev; /* Chain of loaded objects.  */
+……
+}
+所以当gdb知道了动态链接库对应的link_map实例，它就可以通过该链表遍历被调试任务的所有link_map，由于每个link_map都和一个加载的so文件对应，所以可以知道被调试任务所有已经加载的动态库。
+④、读取符号后使能断点
+前面的步骤之后，gdb就可以得到了so文件加载的事件消息，然后读入被调试任务中所有的so文件的符号信息。前面的行为也说明了要忽略此次断点，继续运行。
+在handle_inferior_event--->>>keep_going--->>insert_breakpoints函数中完成对所有断点的使能，如果新加载的so文件中包含了之前的一个pending断点，对于insert_breakpoints函数的调用将会使这个断点生效。
+3、说明
+这里只是描述了一个大致的思路，里面的有些细节可能比较模糊，而且不一定完全准确，但是大致的流程和思路是没有问题的，这一点我还是能够保证的。
+三、进程/线程/系统调用相关事件处理
+新的内核中添加了一些自动调试子进程、枚举系统调用之类的功能，这些功能对动态链接库要求不多，转而依赖内核实现。可以通过
+set follow-fork-mode parent/child 来设置调试跟踪模式，这样对子进程的调试比较方便，因为Unix中进程创建时 fork+exec模式，所以fork之后的代码如果出问题，当前的调试是不好使的。
+还有就是一些catch命令来跟踪系统调用等
+(gdb) show version
+GNU gdb (GDB) Fedora (7.0-3.fc12)
+Copyright (C) 2009 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.  Type "show copying"
+and "show warranty" for details.
+This GDB was configured as "i686-redhat-linux-gnu".
+For bug reporting instructions, please see:
+<http://www.gnu.org/software/gdb/bugs/>.
+(gdb) help catch
+Set catchpoints to catch events.
+
+List of catch subcommands:
+
+catch assert -- Catch failed Ada assertions
+catch catch -- Catch an exception
+catch exception -- Catch Ada exceptions
+catch exec -- Catch calls to exec
+catch fork -- Catch calls to fork
+catch syscall -- Catch system calls by their names and/or numbers 这些功能不清楚是什么版本开始支持的，上面显示我用的是gdb7.0
+catch throw -- Catch an exception
+catch vfork -- Catch calls to vfork
+
+这些很多都需要内核支持，所以看一下内核实现。
+1、进程、线程创建及删除
+这些主要是通过ptrace的PTRACE_SETOPTIONS选项来实现的(该文件中还有ptrace_getsiginfo借口，说明子进程信号信息也是容易被父进程获得和修改的)
+linux-2.6.21\kernel\ptrace.c
+static int ptrace_setoptions(struct task_struct *child, long data)
+{
+    child->ptrace &= ~PT_TRACE_MASK;
+
+    if (data & PTRACE_O_TRACESYSGOOD)
+        child->ptrace |= PT_TRACESYSGOOD;
+
+    if (data & PTRACE_O_TRACEFORK)
+        child->ptrace |= PT_TRACE_FORK;
+
+    if (data & PTRACE_O_TRACEVFORK)
+        child->ptrace |= PT_TRACE_VFORK;
+
+    if (data & PTRACE_O_TRACECLONE)
+        child->ptrace |= PT_TRACE_CLONE;
+
+    if (data & PTRACE_O_TRACEEXEC)
+        child->ptrace |= PT_TRACE_EXEC;
+
+    if (data & PTRACE_O_TRACEVFORKDONE)
+        child->ptrace |= PT_TRACE_VFORK_DONE;
+
+    if (data & PTRACE_O_TRACEEXIT)
+        child->ptrace |= PT_TRACE_EXIT;
+
+    return (data & ~PTRACE_O_MASK) ? -EINVAL : 0;
+}
+在进程fork时：long do_fork(unsigned long clone_flags,……)
+    if (unlikely(current->ptrace)) {
+        trace = fork_traceflag (clone_flags);
+        if (trace)
+            clone_flags |= CLONE_PTRACE;
+    }
+……
+        if (unlikely (trace)) {
+            current->ptrace_message = nr;
+            ptrace_notify ((trace << 8) | SIGTRAP);
+        }
+由于这篇文章粘贴的代码已经很多了，所以就不再粘贴fork_traceflag和ptrace_notify的实现了，但是大家通过这个名字应该就可以知道这些信息是发送给了父进程。大家注意一下ptrace_notify中返回值，低8bits为SIGTRAP信号，而高8bits为trace类型，这些类型可以为PT_TRACE_VFORK、PT_TRACE_CLONE、PTRACE_EVENT_FORK类型，大家可以在gdb中搜索一下对这些事件的处理位置。其它处理，例如PT_TRACE_EXEC、PT_TRACE_EXIT实现和该实现类似，这里省略，大家搜索一下内核这些关键字即可。
+2、系统调用枚举
+这个主要是在汇编代码中设置跟踪点：
+linux-2.6.21\arch\i386\kernel\entry.S
+syscall_trace_entry:
+    movl $-ENOSYS,PT_EAX(%esp)
+    movl %esp, %eax
+    xorl %edx,%edx
+    call do_syscall_trace  系统调用前调用do_syscall_trace，其中edx参数清零，表示是进入系统调用。
+    cmpl $0, %eax
+    jne resume_userspace        # ret != 0 -> running under PTRACE_SYSEMU,
+                    # so must skip actual syscall
+    movl PT_ORIG_EAX(%esp), %eax
+    cmpl $(nr_syscalls), %eax
+    jnae syscall_call
+    jmp syscall_exit
+END(syscall_trace_entry)
+
+    # perform syscall exit tracing
+    ALIGN
+syscall_exit_work:
+    testb $(_TIF_SYSCALL_TRACE|_TIF_SYSCALL_AUDIT|_TIF_SINGLESTEP), %cl
+    jz work_pending
+    TRACE_IRQS_ON
+    ENABLE_INTERRUPTS(CLBR_ANY)    # could let do_syscall_trace() call
+                    # schedule() instead
+    movl %esp, %eax
+    movl $1, %edx
+    call do_syscall_trace 系统调用退出执行do_syscall_trace，参数为1，表示是推出系统调用。
+    jmp resume_userspace
+END(syscall_exit_work)
+
+通知调试器代码
+linux-2.6.21\arch\i386\kernel\ptrace.c
+__attribute__((regparm(3)))
+int do_syscall_trace(struct pt_regs *regs, int entryexit)
+{
+    int is_sysemu = test_thread_flag(TIF_SYSCALL_EMU);
+    /*
+     * With TIF_SYSCALL_EMU set we want to ignore TIF_SINGLESTEP for syscall
+     * interception
+     */
+    int is_singlestep = !is_sysemu && test_thread_flag(TIF_SINGLESTEP);
+    int ret = 0;
+……
+    /* the 0x80 provides a way for the tracing parent to distinguish
+       between a syscall stop and SIGTRAP delivery */
+    /* Note that the debugger could change the result of test_thread_flag!*/
+    ptrace_notify(SIGTRAP | ((current->ptrace & PT_TRACESYSGOOD) ? 0x80:0));
+}
+可以看到，这里并没有区分是系统调用进入还是退出，我想可能是需要调试器自己记录是什么，并且进入和退出不能同时跟踪，PTRACE_CONT之后两者都失效。
+linux-2.6.21\arch\i386\kernel\ptrace.c
+long arch_ptrace(struct task_struct *child, long request, long addr, long data)
+    case PTRACE_SYSEMU: /* continue and stop at next syscall, which will not be executed */
+    case PTRACE_SYSCALL:    /* continue and stop at next (return from) syscall */
+    case PTRACE_CONT:    /* restart after signal. */
+        ret = -EIO;
+        if (!valid_signal(data))
+            break;
+        if (request == PTRACE_SYSEMU) {
+            set_tsk_thread_flag(child, TIF_SYSCALL_EMU);
+            clear_tsk_thread_flag(child, TIF_SYSCALL_TRACE);
+        } else if (request == PTRACE_SYSCALL) {
+            set_tsk_thread_flag(child, TIF_SYSCALL_TRACE);
+            clear_tsk_thread_flag(child, TIF_SYSCALL_EMU);
+        } else {
+            clear_tsk_thread_flag(child, TIF_SYSCALL_EMU);
+            clear_tsk_thread_flag(child, TIF_SYSCALL_TRACE);
+        }
+这么看来，watch还是比较耗费CPU的，如果系统调用比较多的话。
+四、和NPTL库比较
+1、线程创建、删除
+glibc-2.7\nptl\events.c
+void
+__nptl_create_event (void)
+{
+}
+hidden_def (__nptl_create_event)
+
+void
+__nptl_death_event (void)
+{
+}
+hidden_def (__nptl_death_event)
+它们被C库创建和删除线程时调用，调试器同样可以设置此处为断点。
+2、glibc-2.7\nptl\allocatestack.c
+
+/* List of queued stack frames.  */
+static LIST_HEAD (stack_cache);
+
+/* List of the stacks in use.  */
+static LIST_HEAD (stack_used);
+struct pthread
+{
+……
+  /* This descriptor's link on the `stack_used' or `__stack_user' list.  */
+  list_t list;
+……
+}
+所有的线程通过list连接在一起，所以调试器可以动态获得被调试任务的所有线程列表。
+
+===========================================================================================================
+readelf -e /lib/i386-linux-gnu/libc.so.6
+ELF 头：
+  Magic：   7f 45 4c 46 01 01 01 00 00 00 00 00 00 00 00 00 
+  Class:                             ELF32
+  Data:                              2's complement, little endian
+  Version:                           1 (current)
+  OS/ABI:                            UNIX - System V
+  ABI Version:                       0
+  Type:                              DYN (共享目标文件)
+  Machine:                           Intel 80386
+  Version:                           0x1
+  入口点地址：               0x19be0
+  程序头起点：          52 (bytes into file)
+  Start of section headers:          1756292 (bytes into file)
+  标志：             0x0
+  本头的大小：       52 (字节)
+  程序头大小：       32 (字节)
+  Number of program headers:         10
+  节头大小：         40 (字节)
+  节头数量：         67
+  字符串表索引节头： 66
+
+节头：
+  [Nr] Name              Type            Addr     Off    Size   ES Flg Lk Inf Al
+  [ 0]                   NULL            00000000 000000 000000 00      0   0  0
+  [ 1] .note.gnu.build-i NOTE            00000174 000174 000024 00   A  0   0  4
+  [ 2] .note.ABI-tag     NOTE            00000198 000198 000020 00   A  0   0  4
+  [ 3] .gnu.hash         GNU_HASH        000001b8 0001b8 003d10 04   A  4   0  4
+  [ 4] .dynsym           DYNSYM          00003ec8 003ec8 009570 10   A  5   1  4
+  [ 5] .dynstr           STRTAB          0000d438 00d438 005d26 00   A  0   0  1
+  [ 6] .gnu.version      VERSYM          0001315e 01315e 0012ae 02   A  4   0  2
+  [ 7] .gnu.version_d    VERDEF          0001440c 01440c 00048c 00   A  5  33  4
+  [ 8] .gnu.version_r    VERNEED         00014898 014898 000040 00   A  5   1  4
+  [ 9] .rel.dyn          REL             000148d8 0148d8 002a10 08   A  4   0  4
+  [10] .rel.plt          REL             000172e8 0172e8 000060 08   A  4  11  4
+  [11] .plt              PROGBITS        00017350 017350 0000d0 04  AX  0   0 16
+  [12] .text             PROGBITS        00017420 017420 13206e 00  AX  0   0 16
+  [13] __libc_freeres_fn PROGBITS        00149490 149490 000f8b 00  AX  0   0 16
+  [14] __libc_thread_fre PROGBITS        0014a420 14a420 0001fe 00  AX  0   0 16
+  [15] .rodata           PROGBITS        0014a620 14a620 021a54 00   A  0   0 32
+  [16] .interp           PROGBITS        0016c074 16c074 000013 00   A  0   0  1
+  [17] .eh_frame_hdr     PROGBITS        0016c088 16c088 0074a4 00   A  0   0  4
+  [18] .eh_frame         PROGBITS        0017352c 17352c 03135c 00   A  0   0  4
+  [19] .gcc_except_table PROGBITS        001a4888 1a4888 00045e 00   A  0   0  1
+  [20] .hash             HASH            001a4ce8 1a4ce8 003560 04   A  4   0  4
+  [21] .tdata            PROGBITS        001a91d4 1a91d4 000008 00 WAT  0   0  4
+  [22] .tbss             NOBITS          001a91dc 1a91dc 000044 00 WAT  0   0  4
+  [23] .init_array       INIT_ARRAY      001a91dc 1a91dc 00000c 00  WA  0   0  4
+  [24] __libc_subfreeres PROGBITS        001a91e8 1a91e8 000078 00  WA  0   0  4
+  [25] __libc_atexit     PROGBITS        001a9260 1a9260 000004 00  WA  0   0  4
+  [26] __libc_thread_sub PROGBITS        001a9264 1a9264 000010 00  WA  0   0  4
+  [27] .data.rel.ro      PROGBITS        001a9280 1a9280 001b28 00  WA  0   0 32
+  [28] .dynamic          DYNAMIC         001aada8 1aada8 0000f0 08  WA  5   0  4
+  [29] .got              PROGBITS        001aae98 1aae98 00015c 04  WA  0   0  4
+  [30] .got.plt          PROGBITS        001ab000 1ab000 00003c 04  WA  0   0  4
+  [31] .data             PROGBITS        001ab040 1ab040 000e7c 00  WA  0   0 32
+  [32] .bss              NOBITS          001abec0 1abebc 002bbc 00  WA  0   0 32
+  [33] .gnu.warning.sigs PROGBITS        00000000 1abec0 00004d 00      0   0 32
+  [34] .gnu.warning.sigr PROGBITS        00000000 1abf20 000032 00      0   0 32
+  [35] .gnu.warning.sigg PROGBITS        00000000 1abf60 000039 00      0   0 32
+  [36] .gnu.warning.tmpn PROGBITS        00000000 1abfa0 000037 00      0   0 32
+  [37] .gnu.warning.tmpn PROGBITS        00000000 1abfe0 000039 00      0   0 32
+  [38] .gnu.warning.temp PROGBITS        00000000 1ac020 000038 00      0   0 32
+  [39] .gnu.warning.sys_ PROGBITS        00000000 1ac060 000044 00      0   0 32
+  [40] .gnu.warning.sys_ PROGBITS        00000000 1ac0c0 000041 00      0   0 32
+  [41] .gnu.warning.gets PROGBITS        00000000 1ac120 000039 00      0   0 32
+  [42] .gnu.warning.__me PROGBITS        00000000 1ac159 0000b8 00      0   0  1
+  [43] .gnu.warning.getp PROGBITS        00000000 1ac220 00003a 00      0   0 32
+  [44] .gnu.warning.re_m PROGBITS        00000000 1ac260 00003d 00      0   0 32
+  [45] .gnu.warning.getw PROGBITS        00000000 1ac2a0 00007a 00      0   0 32
+  [46] .gnu.warning.lchm PROGBITS        00000000 1ac320 00002f 00      0   0 32
+  [47] .gnu.warning.sstk PROGBITS        00000000 1ac360 00002d 00      0   0 32
+  [48] .gnu.warning.mkte PROGBITS        00000000 1ac3a0 000044 00      0   0 32
+  [49] .gnu.warning.gtty PROGBITS        00000000 1ac400 00002d 00      0   0 32
+  [50] .gnu.warning.stty PROGBITS        00000000 1ac440 00002d 00      0   0 32
+  [51] .gnu.warning.chfl PROGBITS        00000000 1ac480 000030 00      0   0 32
+  [52] .gnu.warning.fchf PROGBITS        00000000 1ac4c0 000031 00      0   0 32
+  [53] .gnu.warning.revo PROGBITS        00000000 1ac500 00002f 00      0   0 32
+  [54] .gnu.warning.llse PROGBITS        00000000 1ac540 00003f 00      0   0 32
+  [55] .gnu.warning.__ge PROGBITS        00000000 1ac580 000039 00      0   0 32
+  [56] .gnu.warning.inet PROGBITS        00000000 1ac5c0 00003c 00      0   0 32
+  [57] .gnu.warning.inet PROGBITS        00000000 1ac600 00003b 00      0   0 32
+  [58] .gnu.warning.inet PROGBITS        00000000 1ac640 00003d 00      0   0 32
+  [59] .gnu.warning.inet PROGBITS        00000000 1ac680 00003c 00      0   0 32
+  [60] .gnu.warning.inet PROGBITS        00000000 1ac6c0 00003b 00      0   0 32
+  [61] .gnu.warning.inet PROGBITS        00000000 1ac700 00003b 00      0   0 32
+  [62] .gnu.warning.fatt PROGBITS        00000000 1ac740 000030 00      0   0 32
+  [63] .gnu.warning.fdet PROGBITS        00000000 1ac780 000030 00      0   0 32
+  [64] .gnu.warning.setl PROGBITS        00000000 1ac7c0 000031 00      0   0 32
+  [65] .gnu_debuglink    PROGBITS        00000000 1ac7f1 000014 00      0   0  1
+  [66] .shstrtab         STRTAB          00000000 1ac805 00047f 00      0   0  1
+Key to Flags:
+  W (write), A (alloc), X (execute), M (merge), S (strings)
+  I (info), L (link order), G (group), T (TLS), E (exclude), x (unknown)
+  O (extra OS processing required) o (OS specific), p (processor specific)
+
+程序头：
+  Type           Offset   VirtAddr   PhysAddr   FileSiz MemSiz  Flg Align
+  PHDR           0x000034 0x00000034 0x00000034 0x00140 0x00140 R E 0x4
+  INTERP         0x16c074 0x0016c074 0x0016c074 0x00013 0x00013 R   0x1
+      [Requesting program interpreter: /lib/ld-linux.so.2]
+  LOAD           0x000000 0x00000000 0x00000000 0x1a8248 0x1a8248 R E 0x1000
+  LOAD           0x1a91d4 0x001a91d4 0x001a91d4 0x02ce8 0x058a8 RW  0x1000
+  DYNAMIC        0x1aada8 0x001aada8 0x001aada8 0x000f0 0x000f0 RW  0x4
+  NOTE           0x000174 0x00000174 0x00000174 0x00044 0x00044 R   0x4
+  TLS            0x1a91d4 0x001a91d4 0x001a91d4 0x00008 0x0004c R   0x4
+  GNU_EH_FRAME   0x16c088 0x0016c088 0x0016c088 0x074a4 0x074a4 R   0x4
+  GNU_STACK      0x000000 0x00000000 0x00000000 0x00000 0x00000 RW  0x10
+  GNU_RELRO      0x1a91d4 0x001a91d4 0x001a91d4 0x01e2c 0x01e2c R   0x1
+
+ Section to Segment mapping:
+  段节...
+   00     
+   01     .interp 
+   02     .note.gnu.build-id .note.ABI-tag .gnu.hash .dynsym .dynstr .gnu.version .gnu.version_d .gnu.version_r .rel.dyn .rel.plt .plt .text __libc_freeres_fn __libc_thread_freeres_fn .rodata .interp .eh_frame_hdr .eh_frame .gcc_except_table .hash 
+   03     .tdata .init_array __libc_subfreeres __libc_atexit __libc_thread_subfreeres .data.rel.ro .dynamic .got .got.plt .data .bss 
+   04     .dynamic 
+   05     .note.gnu.build-id .note.ABI-tag 
+   06     .tdata .tbss 
+   07     .eh_frame_hdr 
+   08     
+   09     .tdata .init_array __libc_subfreeres __libc_atexit __libc_thread_subfreeres .data.rel.ro .dynamic .got 
+yaozhongkai@yaozhongkai-virtual-machine:~/project/libunwind$ objdump -T /lib/ld-linux.so.2 | grep debug
+00021924 g    DO .bss	00000014  GLIBC_2.0   _r_debug
+0000f580 g    DF .text	00000002  GLIBC_PRIVATE _dl_debug_state
+===========================================================================================================
+
+/lib/ld-linux.so.2   应该是glibc加载动态库的功能，因为各个操作系统的差异，所以把这部分功能拿出来单练。
+所以叫ld-linux么
+
+===========================================================================================================
+QDirModel
+
+http://mobile.51cto.com/symbian-268700.htm
+QT中树控件QTreeView开发实例
+
+方法一：使用QDirModel进行目录的现实，QDirModel是QT中专为文件目录树型显示所提供的一种model。 具体使用如下：
+
+#include <QtGui> 
+ 
+int main(int argc, char *argv[])  
+{   
+QApplication app(argc, argv);  
+QSplitter *splitter = new QSplitter;  
+        QDirModel *model = new QDirModel;  
+//从缺省目录创建数据  
+QTreeView *tree = new QTreeView(splitter);  
+tree->setModel(model);  
+tree->setRootIndex(model->index("c:\\"));  
+//配置一个view去显示model中的数据，只需要简单地调用setModel(),并把目录model作为参数传递  
+//setRootIndex()告诉views显示哪个目录的信息，这需要提供一个model index,然后用这个  
+//model index去model中去获取数据  
+//index()这个函数是QDirModel特有的，通过把一个目录做为参数，得到了需要的model index  
+//其他的代码只是窗口show出来,进入程序的事件循环就好了  
+QTextCodec::setCodecForTr(QTextCodec::codecForName("GBK"));   //中文显示  
+        QTextCodec *codec = QTextCodec::codecForLocale();  
+QString a = codec->toUnicode("目录");  
+splitter->setWindowTitle(a);  
+splitter->show();  
+return app.exec();  
+} 
+===========================================================================================================
+
+=============================================================================================================
+Eclipse 的Python插件安装：
+
+http://pydev.org/updates
+
+全装上，再捣鼓捣鼓就行
+
+=============================================================================================================
+Python 元类的文章：
+
+Python 中的元类编程
+http://www.ibm.com/developerworks/cn/linux/l-pymeta/index.html
+
+Python 中的元类编程，第 2 部分
+http://www.ibm.com/developerworks/cn/linux/l-pymeta2/
+
+=============================================================================================================
+
+关于标识符分析的一篇文章
+
+c语言基本数据类型short、int、long、char、float、double
+http://c.biancheng.net/cpp/html/437.html
+=============================================================================================================
+Python 扩展的知识
+
+用C语言扩展Python的功能
+http://www.linuxidc.com/Linux/2012-02/53523.htm
+=============================================================================================================
+
+通过C++调用Python 可能需要这样
+PyObject *result=PyEval_CallObject(pFunc, pArgs);
+
+=============================================================================================================
+
+	UTER_ASSERT(m_dwfcie != NULL);
+
+#if 0
+	/*
+	 * 首先通过dwarf_get_fde_instr_bytes去的fde的frame信息的位置和长度，
+	 * 保存在instraddr 和 addrlen中，这两个变量不能直接使用，只能提供回给libdwarf的接口，
+	 * 比如 dwarf_expand_frame_instructions
+	 * */
+	Dwarf_Ptr instraddr;
+	Dwarf_Unsigned addrlen;
+	result = dwarf_get_fde_instr_bytes(m_fde, &instraddr, &addrlen, &error);
+    if(result == DW_DLV_ERROR) {
+		UTER_LOG("Get debug information error, description %s.", dwarf_errmsg(error));
+		dwarf_dealloc(m_dbg, error, DW_DLA_ERROR);
+		return -1;
+    }
+
+    Dwarf_Frame_Op *op_list;
+    Dwarf_Signed op_count;
+	result = dwarf_expand_frame_instructions(m_dwfcie->m_cie,
+						  instraddr, addrlen,
+                          &op_list, &op_count, &error);
+    if (result == DW_DLV_NO_ENTRY) {
+        return 0;
+    } else if (result == DW_DLV_ERROR) {
+		UTER_LOG("Get debug information error, description %s.", dwarf_errmsg(error));
+		dwarf_dealloc(m_dbg, error, DW_DLA_ERROR);
+		return -1;
+    }
+    int kloop;
+    for (kloop = 0; kloop < op_count; kloop++) {
+    	Dwarf_Frame_Op *op = op_list + kloop;
+    	printf(">>>%d   %d   %d   %lld   %lld   0x%llx\n",
+    			op->fp_base_op,
+				op->fp_extended_op,
+				op->fp_register,
+    			op->fp_offset,
+				op->fp_instr_offset,
+				0);
+    }
+    dwarf_dealloc(m_dbg, op_list, DW_DLA_FRAME_BLOCK);
+
+    printf(">>>0x%llx\n", m_lowpc);
+#endif
+
+
+=============================================================================================================
+
+=============================================================================================================
+
+=============================================================================================================
+
+=============================================================================================================
+
+=============================================================================================================
+
+=============================================================================================================
+
+=============================================================================================================
+
+=============================================================================================================
+
+=============================================================================================================
+
+=============================================================================================================
+
+=============================================================================================================
+
+=============================================================================================================
+
+=============================================================================================================
+
+=============================================================================================================
+
+=============================================================================================================
+===========================================================================================================
+
+===========================================================================================================
+
+===========================================================================================================
+
+===========================================================================================================
+===========================================================================================================
+
+===========================================================================================================
+
+===========================================================================================================
+
+===========================================================================================================
+
+===========================================================================================================
+
+===========================================================================================================
+
+===========================================================================================================
+
+===========================================================================================================
+
+===========================================================================================================
+
+===========================================================================================================
+
+===========================================================================================================
+
+===========================================================================================================
+
+===========================================================================================================
+
+===========================================================================================================

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ProjectOfUter Version="1.0">
+    <Targets>
+        <Target Name="example_nginx" Alive="True">
+            <Connect Type="Local"/>
+            <Start Type="New">
+                <Path Value="/home/yaozhongkai/uter/examples/example_nginx/src/nginx-1.9.14_install/sbin/nginx"/>
+                <Arguments/>
+                <Environments Replace="False"/>
+            </Start>
+        </Target>
+    </Targets>
+    <SourceFile/>
+    <CaseDir>
+        <Dir Path="/home/yaozhongkai/uter/examples/example_nginx/testcase"/>
+    </CaseDir>
+</ProjectOfUter>

@@ -1,0 +1,77 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+     <file>images/analyse.png</file>
+     <file>images/explorer.png</file>
+     <file>images/project.png</file>
+     
+      <file>images/warning.png</file>
+      <file>images/cannot.png</file>
+      <file>images/ask.png</file>
+     
+     <file>images/elmt_mod.png</file>
+     <file>images/elmt_cu.png</file>
+     <file>images/elmt_file.png</file>
+     <file>images/elmt_files.png</file>
+     <file>images/elmt_type.png</file>
+     <file>images/elmt_data.png</file>
+     <file>images/elmt_fun.png</file>
+     
+	 <file>images/ctrl_connect.png</file>
+	 <file>images/ctrl_disconnect.png</file>
+	 <file>images/ctrl_start.png</file>
+	 <file>images/ctrl_continue.png</file>
+	 <file>images/ctrl_stop.png</file>
+	 <file>images/ctrl_close.png</file>
+	 
+	 <file>images/cov_prev_part.png</file>
+	 <file>images/cov_next_part.png</file>
+	 <file>images/cov_prev_no.png</file>
+	 <file>images/cov_next_no.png</file>
+
+	 <file>images/cov_on.png</file>
+	 <file>images/cov_off.png</file>
+	 <file>images/cov_clear.png</file>
+	 <file>images/cov_update.png</file> 
+	 
+	 <file>images/step_into.png</file>
+	 <file>images/step_over.png</file>
+	 <file>images/step_return.png</file>
+	 <file>images/step_asm.png</file>
+	 
+	 <file>images/test_case.png</file>
+	 <file>images/test_allcase.png</file>
+	 
+	 <file>images/file_new.png</file>
+	 <file>images/file_open.png</file>
+	 <file>images/file_save.png</file>
+	 <file>images/file_saveall.png</file>
+
+    <file>images/com_add.png</file>
+    <file>images/com_del.png</file>
+    <file>images/com_delall.png</file>
+    
+    <file>images/edit_copy.png</file>
+    <file>images/edit_cut.png</file>
+    <file>images/edit_paste.png</file>
+    
+    <file>images/lang_new.png</file>
+    <file>images/lang_py.png</file>
+    <file>images/lang_cpp.png</file>
+    <file>images/lang_c.png</file>
+    <file>images/lang_h.png</file>
+    <file>images/lang_html.png</file>
+    <file>images/lang_txt.png</file>
+    <file>images/lang_makefile.png</file>
+    <file>images/lang_unknown.png</file>
+    
+    <file>images/brkpnt_fun.png</file>
+    <file>images/brkpnt_enable.png</file>
+    <file>images/brkpnt_disable.png</file>
+    
+    <file>images/arrow_right.png</file>
+    <file>images/target.png</file>
+    <file>images/targets.png</file>
+    
+    <file>images/app_logo.png</file>
+</qresource>
+</RCC>    

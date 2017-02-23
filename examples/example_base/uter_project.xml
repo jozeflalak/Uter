@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ProjectOfUter Version="1.0">
+    <Targets>
+        <Target Alive="True" Name="example_base">
+            <Connect Type="Local"/>
+            <Start Type="New">
+                <Path Value="/home/yaozhongkai/uter/examples/example_base/src/test.exe"/>
+                <Arguments>
+                    <Argument Value="arg1"/>
+                    <Argument Value="arg2"/>
+                    <Argument Value="arg3"/>
+                    <Argument Value="arg4"/>
+                </Arguments>
+                <Environments Replace="False">
+                    <Environment Key="env1" Value="1"/>
+                    <Environment Key="env2" Value="2"/>
+                    <Environment Key="env3" Value="3"/>
+                    <Environment Key="env4" Value="4"/>
+                </Environments>
+            </Start>
+        </Target>
+        <Target Name="example_nginx">
+            <Connect Type="Local"/>
+            <Start Type="New">
+                <Path Value="/home/yaozhongkai/uter/examples/example_nginx/src/nginx-1.9.14_install/sbin/nginx"/>
+                <Arguments/>
+                <Environments Replace="False"/>
+            </Start>
+        </Target>
+    </Targets>
+    <SourceFile>
+        <File Path="/home/yaozhongkai/uter/examples/example_base/src/no_thisfile.c"/>
+        <File Path="/home/yaozhongkai/uter/examples/example_base/src/main.c"/>
+        <File Path="/home/yaozhongkai/uter/examples/example_base/src/head.h"/>
+    </SourceFile>
+    <CaseDir>
+        <Dir Path="/home/yaozhongkai/uter/examples/example_base/testcase"/>
+    </CaseDir>
+</ProjectOfUter>
