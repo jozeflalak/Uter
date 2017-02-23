@@ -1,0 +1,14 @@
+prefix=/home/yaozhongkai/Qt5.5.0/5.5/gcc
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+
+Name: Qt5 XcbQpa
+Description: Qt XcbQpa module
+Version: 5.5.0
+Libs: -L${libdir} -lQt5XcbQpa 
+Libs.private: -ldl -lX11-xcb -lXi -lSM -lICE -lxcb -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/qtbase/src/plugins/platforms/xcb/xcb-static -lxcb-static -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5PlatformSupport -lfontconfig -lfreetype -lQt5DBus -lgthread-2.0 -pthread -lrt -lglib-2.0 -lXrender -lXext -lX11 -lm -lGL -lQt5Gui -lQt5Core -lpthread -lGL  
+Cflags: -I${includedir}/QtXcbQpa -I${includedir}
+Requires: Qt5Core Qt5Gui
+

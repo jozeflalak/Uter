@@ -1,0 +1,14 @@
+prefix=/home/yaozhongkai/Qt5.5.0/5.5/gcc
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+
+Name: Qt5 WebKit
+Description: Qt WebKit module
+Version: 5.5.0
+Libs: -L${libdir} -lQt5WebKit 
+Libs.private: -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Gui -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Core -lpthread -lQt5Network -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Core -lpthread -lQt5Core -lpthread -lpthread -Wl,-whole-archive -lWebKit1 -Wl,-no-whole-archive -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/qtwebkit/Source/WebKit/ -Wl,-whole-archive -lWebKit2 -Wl,-no-whole-archive -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/qtwebkit/Source/WebKit2/ -lrt -Wl,-whole-archive -lWebCore -Wl,-no-whole-archive -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/qtwebkit/Source/WebCore/ -lz -lXrender -lXcomposite -lXrender -Wl,-whole-archive -lANGLE -Wl,-no-whole-archive -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/qtwebkit/Source/ThirdParty/ANGLE/ -Wl,-whole-archive -lleveldb -Wl,-no-whole-archive -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/qtwebkit/Source/ThirdParty/leveldb/ -Wl,-whole-archive -lJavaScriptCore -Wl,-no-whole-archive -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/qtwebkit/Source/JavaScriptCore/ -Wl,-whole-archive -lWTF -Wl,-no-whole-archive -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/qtwebkit/Source/WTF/ -licui18n -licuuc -licudata -lXext -lX11 -lm -lX11 -lxml2 -lsqlite3 -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Sensors -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Core -lpthread -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Positioning -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Core -lpthread -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Quick -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Gui -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Qml -lQt5Network -lQt5Core -lpthread -lQt5Qml -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Network -lQt5Core -lpthread -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Multimedia -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Network -lQt5Gui -lQt5Core -lpthread -lQt5Network -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Core -lpthread -lQt5Gui -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Core -lpthread -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5WebChannel -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Qml -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Network -lQt5Core -lpthread -lQt5Sql -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Core -lpthread -lQt5Core -lpthread -lGL  
+Cflags: -I${includedir}/QtWebKit -I${includedir}
+Requires: Qt5Core Qt5Gui Qt5Network
+

@@ -1,0 +1,14 @@
+prefix=/home/yaozhongkai/Qt5.5.0/5.5/gcc
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+
+Name: Qt5 QuickTest
+Description: Qt QuickTest module
+Version: 5.5.0
+Libs: -L${libdir} -lQt5QuickTest 
+Libs.private: -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Widgets -lQt5Gui -lQt5Core -lpthread -lQt5Test -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Quick -lQt5Gui -lQt5Qml -lQt5Network -lQt5Core -lpthread -lGL  
+Cflags: -I${includedir}/QtQuickTest -I${includedir}
+Requires: Qt5Core Qt5Widgets
+

@@ -1,0 +1,14 @@
+prefix=/home/yaozhongkai/Qt5.5.0/5.5/gcc
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+
+Name: Qt5 WebView
+Description: Qt WebView module
+Version: 5.5.0
+Libs: -L${libdir} -lQt5WebView 
+Libs.private: -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5WebEngine -lQt5Quick -lQt5Gui -lQt5Qml -lQt5Network -lQt5Core -lpthread -lGL  
+Cflags: -I${includedir}/QtWebView -I${includedir}
+Requires: Qt5Core Qt5Gui Qt5WebEngine Qt5WebEngine Qt5Core Qt5Gui Qt5Qml Qt5Quick Qt5Quick Qt5Qml
+

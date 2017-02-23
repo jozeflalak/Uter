@@ -1,0 +1,14 @@
+prefix=/home/yaozhongkai/Qt5.5.0/5.5/gcc
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+
+Name: Qt5 MultimediaQuick_p
+Description: Qt MultimediaQuick_p module
+Version: 5.5.0
+Libs: -L${libdir} -lQt5MultimediaQuick_p 
+Libs.private: -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Quick -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Multimedia -lQt5Gui -lQt5Qml -lQt5Network -lQt5Core -lpthread -lGL  
+Cflags: -I${includedir}/QtMultimediaQuick_p -I${includedir}
+Requires: Qt5Core Qt5Quick Qt5Multimedia
+

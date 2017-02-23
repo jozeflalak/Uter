@@ -1,0 +1,14 @@
+prefix=/home/yaozhongkai/Qt5.5.0/5.5/gcc
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+
+Name: Qt5 WebKitWidgets
+Description: Qt WebKitWidgets module
+Version: 5.5.0
+Libs: -L${libdir} -lQt5WebKitWidgets 
+Libs.private: -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Widgets -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5WebKit -lQt5Gui -lQt5Network -lQt5Core -lpthread -lXext -lm -lX11 -lxml2 -lsqlite3 -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Sensors -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Positioning -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5MultimediaWidgets -lQt5Multimedia -lQt5PrintSupport -lQt5OpenGL -lQt5Widgets -lQt5WebKit -lQt5Gui -lQt5Network -lQt5Sql -lQt5Core -lpthread -lGL  
+Cflags: -I${includedir}/QtWebKitWidgets -I${includedir}
+Requires: Qt5Core Qt5Gui Qt5Widgets Qt5Network Qt5WebKit
+

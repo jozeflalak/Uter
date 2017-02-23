@@ -1,0 +1,14 @@
+prefix=/home/yaozhongkai/Qt5.5.0/5.5/gcc
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+
+Name: Qt5 3DQuick
+Description: Qt 3DQuick module
+Version: 5.5.0
+Libs: -L${libdir} -lQt53DQuick 
+Libs.private: -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt53DCore -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Gui -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Qml -lQt5Network -lQt5Core -lpthread -lGL  
+Cflags: -I${includedir}/Qt3DQuick -I${includedir}
+Requires: Qt5Core Qt5Gui Qt5Qml Qt53DCore
+

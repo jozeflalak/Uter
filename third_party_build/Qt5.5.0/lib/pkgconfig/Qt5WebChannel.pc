@@ -1,0 +1,14 @@
+prefix=/home/yaozhongkai/Qt5.5.0/5.5/gcc
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+
+Name: Qt5 WebChannel
+Description: Qt WebChannel module
+Version: 5.5.0
+Libs: -L${libdir} -lQt5WebChannel 
+Libs.private: -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Qml -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Network -lQt5Core -lpthread   
+Cflags: -I${includedir}/QtWebChannel -I${includedir}
+Requires: Qt5Core
+

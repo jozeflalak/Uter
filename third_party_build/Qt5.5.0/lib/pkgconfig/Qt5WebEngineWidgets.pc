@@ -1,0 +1,14 @@
+prefix=/home/yaozhongkai/Qt5.5.0/5.5/gcc
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+
+Name: Qt5 WebEngineWidgets
+Description: Qt WebEngineWidgets module
+Version: 5.5.0
+Libs: -L${libdir} -lQt5WebEngineWidgets 
+Libs.private: -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5WebEngine -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Quick -lQt5Widgets -lQt5Gui -lQt5Qml -lQt5Network -lQt5Core -lpthread -lQt5WebEngineCore -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -L/home/yaozhongkai/Qt5.5.0/5.5/gcc/lib -lQt5Quick -lQt5Gui -lQt5WebChannel -lQt5Qml -lQt5Network -lQt5Positioning -lQt5Core -lpthread -lGL  
+Cflags: -I${includedir}/QtWebEngineWidgets -I${includedir}
+Requires: Qt5Core Qt5Gui Qt5WebEngine Qt5Widgets Qt5Network Qt5Quick
+
